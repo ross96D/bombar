@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strconv"
@@ -30,7 +31,7 @@ var rootCmd = &cobra.Command{
 		}
 		cm := args[0]
 		arg := args[1:]
-		bombar(r, cm, arg...)
+		bombar(r, cmd.Flag("stdin").Value.String(), cm, arg...)
 	},
 }
 
@@ -53,10 +54,11 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().BoolP("stdin", "i", false, "Recive input from stdin to pass down to command")
 	rootCmd.Flags().Int32P("repeat", "r", 50, "Amount of times the command will run")
 }
 
-func bombar(r int, cmd string, args ...string) {
+func bombar(r int, sdtin string, cmd string, args ...string) {
 	now := time.Now()
 	for i := 0; i < r; i++ {
 		c := exec.Command(cmd, args...)
@@ -64,9 +66,13 @@ func bombar(r int, cmd string, args ...string) {
 		if err != nil {
 			panic(err)
 		}
-		_, err = c.StdinPipe()
-		if err != nil {
-			panic(err)
+		if sdtin == "true" {
+			csdtin, err := c.StdinPipe()
+			if err != nil {
+				panic(err)
+			}
+			io.Copy(csdtin, os.Stdin)
+			csdtin.Close()
 		}
 		err = c.Start()
 		if err != nil {
