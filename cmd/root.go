@@ -62,12 +62,12 @@ func init() {
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	rootCmd.Flags().BoolP("stdin", "i", false, "Recive input from stdin to pass down to command")
-	rootCmd.Flags().BoolP("debug", "d", false, "Print debug message")
+	rootCmd.Flags().BoolP("verbose", "v", false, "Verbose output")
 	rootCmd.Flags().Int32P("repeat", "r", 50, "Amount of times the command will run")
 }
 
 func bombar(r int, sdtin string, cmd string, args ...string) {
-	now := time.Now()
+	var micro uint64 = 0
 	var b []byte = nil
 	var err error
 	if sdtin == "true" {
@@ -81,11 +81,11 @@ func bombar(r int, sdtin string, cmd string, args ...string) {
 			println("Start loop ", i)
 		}
 		c := exec.Command(cmd, args...)
-		cstderr, err := c.StderrPipe()
+		_, err := c.StderrPipe()
 		if err != nil {
 			panic(err)
 		}
-		go io.Copy(os.Stderr, cstderr)
+		// go io.Copy(os.Stderr, cstderr)
 		if debug {
 			println("Copying to stderr")
 		}
@@ -101,16 +101,22 @@ func bombar(r int, sdtin string, cmd string, args ...string) {
 			}
 		}
 		err = c.Start()
+		now := time.Now()
 		if err != nil {
 			panic(err)
 		}
 		if debug {
 			println("Process started")
 		}
-		c.Wait()
+		err = c.Wait()
+		if err != nil {
+			panic(err)
+		}
+		loop := time.Since(now).Microseconds()
+		micro += uint64(loop)
 		if debug {
-			println("Finished loop ", i)
+			println("Finished loop", i, "in", micro, "ms")
 		}
 	}
-	fmt.Printf("Spent: %v", time.Since(now))
+	fmt.Printf("Spent: %v", micro)
 }
