@@ -4,6 +4,7 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +15,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var debug bool
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "bombar",
@@ -22,6 +25,10 @@ var rootCmd = &cobra.Command{
 		if len(args) == 0 {
 			cmd.Help()
 			os.Exit(1)
+		}
+
+		if cmd.Flag("debug").Value.String() == "true" {
+			debug = true
 		}
 
 		r, _ := strconv.Atoi(cmd.Flag("repeat").Value.String())
@@ -55,30 +62,55 @@ func init() {
 	// when this action is called directly.
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	rootCmd.Flags().BoolP("stdin", "i", false, "Recive input from stdin to pass down to command")
+	rootCmd.Flags().BoolP("debug", "d", false, "Print debug message")
 	rootCmd.Flags().Int32P("repeat", "r", 50, "Amount of times the command will run")
 }
 
 func bombar(r int, sdtin string, cmd string, args ...string) {
 	now := time.Now()
-	for i := 0; i < r; i++ {
-		c := exec.Command(cmd, args...)
-		_, err := c.StderrPipe()
+	var b []byte = nil
+	var err error
+	if sdtin == "true" {
+		b, err = io.ReadAll(os.Stdin)
 		if err != nil {
 			panic(err)
+		}
+	}
+	for i := 0; i < r; i++ {
+		if debug {
+			println("Start loop ", i)
+		}
+		c := exec.Command(cmd, args...)
+		cstderr, err := c.StderrPipe()
+		if err != nil {
+			panic(err)
+		}
+		go io.Copy(os.Stderr, cstderr)
+		if debug {
+			println("Copying to stderr")
 		}
 		if sdtin == "true" {
 			csdtin, err := c.StdinPipe()
 			if err != nil {
 				panic(err)
 			}
-			io.Copy(csdtin, os.Stdin)
+			io.Copy(csdtin, bytes.NewReader(b))
 			csdtin.Close()
+			if debug {
+				println("Copying to stdin finish")
+			}
 		}
 		err = c.Start()
 		if err != nil {
 			panic(err)
 		}
+		if debug {
+			println("Process started")
+		}
 		c.Wait()
+		if debug {
+			println("Finished loop ", i)
+		}
 	}
 	fmt.Printf("Spent: %v", time.Since(now))
 }
