@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var debug bool
+var verbose bool
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -27,8 +27,8 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if cmd.Flag("debug").Value.String() == "true" {
-			debug = true
+		if cmd.Flag("verbose").Value.String() == "true" {
+			verbose = true
 		}
 
 		r, _ := strconv.Atoi(cmd.Flag("repeat").Value.String())
@@ -77,7 +77,7 @@ func bombar(r int, sdtin string, cmd string, args ...string) {
 		}
 	}
 	for i := 0; i < r; i++ {
-		if debug {
+		if verbose {
 			println("Start loop ", i)
 		}
 		c := exec.Command(cmd, args...)
@@ -86,7 +86,7 @@ func bombar(r int, sdtin string, cmd string, args ...string) {
 			panic(err)
 		}
 		// go io.Copy(os.Stderr, cstderr)
-		if debug {
+		if verbose {
 			println("Copying to stderr")
 		}
 		if sdtin == "true" {
@@ -96,7 +96,7 @@ func bombar(r int, sdtin string, cmd string, args ...string) {
 			}
 			io.Copy(csdtin, bytes.NewReader(b))
 			csdtin.Close()
-			if debug {
+			if verbose {
 				println("Copying to stdin finish")
 			}
 		}
@@ -105,7 +105,7 @@ func bombar(r int, sdtin string, cmd string, args ...string) {
 		if err != nil {
 			panic(err)
 		}
-		if debug {
+		if verbose {
 			println("Process started")
 		}
 		err = c.Wait()
@@ -114,7 +114,7 @@ func bombar(r int, sdtin string, cmd string, args ...string) {
 		}
 		loop := time.Since(now).Microseconds()
 		micro += uint64(loop)
-		if debug {
+		if verbose {
 			println("Finished loop", i, "in", micro, "ms")
 		}
 	}
